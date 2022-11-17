@@ -1,5 +1,7 @@
 use clap::{command, Parser};
 use std::error::Error;
+use std::fs::File;
+use std::io::{self, BufRead, BufReader};
 
 type MyResult<T> = Result<T, Box<dyn Error>>;
 
@@ -22,6 +24,22 @@ struct Cli {
 
 pub fn run() -> MyResult<()> {
     let cli = Cli::parse();
-    println!("{:?}", cli);
+    let mut file = open(&cli.input).map_err(|e| format!("{}: {}", cli.input, e))?;
+
+    loop {
+        let mut line = String::new();
+        let bytes_in_line = file.read_line(&mut line)?;
+        if bytes_in_line == 0 {
+            break;
+        }
+        print!("{}", line);
+    }
     Ok(())
+}
+
+fn open(filename: &str) -> MyResult<Box<dyn BufRead>> {
+    match filename {
+        "-" => Ok(Box::new(BufReader::new(io::stdin()))),
+        _ => Ok(Box::new(BufReader::new(File::open(filename)?))),
+    }
 }
