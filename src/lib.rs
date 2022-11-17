@@ -29,26 +29,32 @@ pub fn run() -> MyResult<()> {
     let mut prev_line = String::new();
     let mut num_lines: usize = 0;
     let mut buf: Vec<String> = Vec::new();
-    for file_line in file.lines() {
-        if let Ok(line) = file_line {
-            if line == prev_line || num_lines == 0 {
-                num_lines += 1;
-            } else {
-                buf.push(format!(
-                    "{}{}",
-                    format_count(cli.count, num_lines),
-                    prev_line.trim_end()
-                ));
-                num_lines = 1;
-            }
-            prev_line = line;
+    for line in file.lines() {
+        let line = line?;
+        if line == prev_line || num_lines == 0 {
+            num_lines += 1;
+        } else {
+            buf.push(format!(
+                "{}{}",
+                format_count(cli.count, num_lines),
+                prev_line
+            ));
+            num_lines = 1;
         }
+        prev_line = line;
     }
+
     buf.push(format!(
         "{}{}",
         format_count(cli.count, num_lines),
-        prev_line.trim_end()
+        prev_line
     ));
+
+    // inputting an empty file returns nothing,
+    // num_lines should only equal 0 with an empty file
+    if num_lines == 0 {
+        return Ok(());
+    }
 
     for line in buf {
         println!("{}", line);
