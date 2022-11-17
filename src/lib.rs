@@ -24,15 +24,34 @@ struct Cli {
 
 pub fn run() -> MyResult<()> {
     let cli = Cli::parse();
-    let mut file = open(&cli.input).map_err(|e| format!("{}: {}", cli.input, e))?;
+    let file = open(&cli.input).map_err(|e| format!("{}: {}", cli.input, e))?;
 
-    loop {
-        let mut line = String::new();
-        let bytes_in_line = file.read_line(&mut line)?;
-        if bytes_in_line == 0 {
-            break;
+    let mut prev_line = String::new();
+    let mut num_lines: usize = 0;
+    let mut buf: Vec<String> = Vec::new();
+    for file_line in file.lines() {
+        if let Ok(line) = file_line {
+            if line == prev_line || num_lines == 0 {
+                num_lines += 1;
+            } else {
+                buf.push(format!(
+                    "{}{}",
+                    format_count(cli.count, num_lines),
+                    prev_line.trim_end()
+                ));
+                num_lines = 1;
+            }
+            prev_line = line;
         }
-        print!("{}", line);
+    }
+    buf.push(format!(
+        "{}{}",
+        format_count(cli.count, num_lines),
+        prev_line.trim_end()
+    ));
+
+    for line in buf {
+        println!("{}", line);
     }
     Ok(())
 }
@@ -41,5 +60,13 @@ fn open(filename: &str) -> MyResult<Box<dyn BufRead>> {
     match filename {
         "-" => Ok(Box::new(BufReader::new(io::stdin()))),
         _ => Ok(Box::new(BufReader::new(File::open(filename)?))),
+    }
+}
+
+fn format_count(count: bool, num_lines: usize) -> String {
+    if count {
+        format!("{:>7} ", num_lines)
+    } else {
+        "".to_string()
     }
 }
