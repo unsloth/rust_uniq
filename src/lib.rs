@@ -1,7 +1,7 @@
 use clap::{command, Parser};
 use std::error::Error;
 use std::fs::File;
-use std::io::{self, BufRead, BufReader};
+use std::io::{self, BufRead, BufReader, Write};
 
 type MyResult<T> = Result<T, Box<dyn Error>>;
 
@@ -56,8 +56,12 @@ pub fn run() -> MyResult<()> {
         return Ok(());
     }
 
-    for line in buf {
-        println!("{}", line);
+    if let Some(out_filename) = cli.output {
+        write_file(&out_filename, &buf)?;
+    } else {
+        for line in buf {
+            println!("{}", line);
+        }
     }
     Ok(())
 }
@@ -75,4 +79,13 @@ fn format_count(count: bool, num_lines: usize) -> String {
     } else {
         "".to_string()
     }
+}
+
+fn write_file(out_filename: &str, buf: &Vec<String>) -> MyResult<()> {
+    let mut out_file = File::create(out_filename)?;
+    for line in buf {
+        out_file.write_all(line.as_bytes())?;
+        out_file.write_all(b"\n")?;
+    }
+    Ok(())
 }
