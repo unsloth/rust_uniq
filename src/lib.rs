@@ -29,26 +29,27 @@ pub fn run() -> MyResult<()> {
     let mut prev_line = String::new();
     let mut num_lines: usize = 0;
     let mut buf: Vec<String> = Vec::new();
+
+    let mut write_output = |num_lines: usize, prev_line: &str| {
+        if cli.count {
+            buf.push(format!("{:>7} {}", num_lines, prev_line));
+        } else {
+            buf.push(format!("{}", prev_line));
+        }
+    };
+
     for line in file.lines() {
         let line = line?;
         if line == prev_line || num_lines == 0 {
             num_lines += 1;
         } else {
-            buf.push(format!(
-                "{}{}",
-                format_count(cli.count, num_lines),
-                prev_line
-            ));
+            write_output(num_lines, &prev_line);
             num_lines = 1;
         }
         prev_line = line;
     }
-
-    buf.push(format!(
-        "{}{}",
-        format_count(cli.count, num_lines),
-        prev_line
-    ));
+    // Make sure to include last line
+    write_output(num_lines, &prev_line);
 
     // inputting an empty file returns nothing,
     // num_lines should only equal 0 with an empty file
@@ -70,14 +71,6 @@ fn open(filename: &str) -> MyResult<Box<dyn BufRead>> {
     match filename {
         "-" => Ok(Box::new(BufReader::new(io::stdin()))),
         _ => Ok(Box::new(BufReader::new(File::open(filename)?))),
-    }
-}
-
-fn format_count(count: bool, num_lines: usize) -> String {
-    if count {
-        format!("{:>7} ", num_lines)
-    } else {
-        "".to_string()
     }
 }
 
