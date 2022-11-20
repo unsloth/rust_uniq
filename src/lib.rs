@@ -26,16 +26,21 @@ pub fn run() -> MyResult<()> {
     let cli = Cli::parse();
     let file = open(&cli.input).map_err(|e| format!("{}: {}", cli.input, e))?;
 
+    let mut out_file: Box<dyn Write> = match &cli.output {
+        Some(out) => Box::new(File::create(out)?),
+        None => Box::new(io::stdout()),
+    };
+
     let mut prev_line = String::new();
     let mut num_lines: usize = 0;
-    let mut buf: Vec<String> = Vec::new();
 
-    let mut write_output = |num_lines: usize, prev_line: &str| {
+    let mut write_output = |num_lines: usize, prev_line: &str| -> MyResult<()> {
         if cli.count {
-            buf.push(format!("{:>7} {}", num_lines, prev_line));
+            write!(out_file, "{:>7} {}\n", num_lines, prev_line)?;
         } else {
-            buf.push(format!("{}", prev_line));
+            write!(out_file, "{}\n", prev_line)?;
         }
+        Ok(())
     };
 
     for line in file.lines() {
@@ -43,13 +48,11 @@ pub fn run() -> MyResult<()> {
         if line == prev_line || num_lines == 0 {
             num_lines += 1;
         } else {
-            write_output(num_lines, &prev_line);
+            write_output(num_lines, &prev_line)?;
             num_lines = 1;
         }
         prev_line = line;
     }
-    // Make sure to include last line
-    write_output(num_lines, &prev_line);
 
     // inputting an empty file returns nothing,
     // num_lines should only equal 0 with an empty file
@@ -57,13 +60,9 @@ pub fn run() -> MyResult<()> {
         return Ok(());
     }
 
-    if let Some(out_filename) = cli.output {
-        write_file(&out_filename, &buf)?;
-    } else {
-        for line in buf {
-            println!("{}", line);
-        }
-    }
+    // Make sure to include last line
+    write_output(num_lines, &prev_line)?;
+
     Ok(())
 }
 
@@ -72,13 +71,4 @@ fn open(filename: &str) -> MyResult<Box<dyn BufRead>> {
         "-" => Ok(Box::new(BufReader::new(io::stdin()))),
         _ => Ok(Box::new(BufReader::new(File::open(filename)?))),
     }
-}
-
-fn write_file(out_filename: &str, buf: &Vec<String>) -> MyResult<()> {
-    let mut out_file = File::create(out_filename)?;
-    for line in buf {
-        out_file.write_all(line.as_bytes())?;
-        out_file.write_all(b"\n")?;
-    }
-    Ok(())
 }
